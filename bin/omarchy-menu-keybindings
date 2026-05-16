@@ -14,26 +14,19 @@ declare -A LUA_BIND_ARG_MAP
 # fixed platform root, which no environment variable moves.
 key_names_file=/usr/share/omarchy-platform/key-names
 
-# The leading layout and variant, which Hyprland resolves bindings against.
-# Only names XKB could know pass, since they end up on a command line.
-leading_keyboard() {
-  local option value
-  for option in kb_layout kb_variant; do
-    value=$(hyprctl -j getoption "input:$option" 2>/dev/null | jq -r '.str // empty' 2>/dev/null)
-    value=${value%%,*}
-    [[ $value =~ ^[A-Za-z0-9_-]*$ ]] || value=""
-    printf '%s\n' "$value"
-  done
-}
-
 # Hyprland reports XKB keycodes for code: bindings. Resolve them to symbols
 # via the compiled keymap, with a small fallback for common keys so the menu
 # remains readable if xkbcli cannot resolve a symbol.
 parse_keycodes() {
   local layout variant
-  { read -r layout; read -r variant; } < <(leading_keyboard)
+  local xkbcli_args=()
 
-  awk -v key_names="$key_names_file" -v layout="$layout" -v variant="$variant" '
+  layout="$(hyprctl getoption -j input:kb_layout | jq -r '.str // empty')"
+  variant="$(hyprctl getoption -j input:kb_variant | jq -r '.str // empty')"
+  [[ -n $layout ]] && xkbcli_args+=(--layout "$layout")
+  [[ -n $variant ]] && xkbcli_args+=(--variant "$variant")
+
+  awk -v key_names="$key_names_file" '
     BEGIN {
       while ((getline line < key_names) > 0) {
         # Blanks around a line and a CRLF line end read the same, as in
@@ -49,21 +42,14 @@ parse_keycodes() {
         keycode_symbol[substr(fallbacks[i], 1, separator - 1)] = substr(fallbacks[i], separator + 1)
       }
 
-      # Name each key by what the leading layout prints on it: on JIS the key
-      # right of 0 is ^, not =. </dev/null keeps xkbcli from consuming the
-      # binding records on stdin.
-      keymap_cmd = "xkbcli compile-keymap"
-      if (layout != "") keymap_cmd = keymap_cmd " --layout " layout
-      if (layout != "" && variant != "") keymap_cmd = keymap_cmd " --variant " variant
-      keymap_cmd = keymap_cmd " </dev/null"
       section = ""
-      while ((keymap_cmd | getline line) > 0) {
+      while ((getline line < "/dev/fd/3") > 0) {
         if (line ~ /xkb_keycodes/) { section = "codes"; continue }
         if (line ~ /xkb_symbols/)  { section = "syms";  continue }
         if (section == "codes" && match(line, /<([A-Za-z0-9_]+)>\s*=\s*([0-9]+)\s*;/, m)) code_by_name[m[1]] = m[2]
         if (section == "syms" && match(line, /key\s*<([A-Za-z0-9_]+)>\s*\{\s*\[\s*([^, \]]+)/, m)) sym_by_name[m[1]] = m[2]
       }
-      close(keymap_cmd)
+      close("/dev/fd/3")
 
       for (name in code_by_name) {
         code = code_by_name[name]
@@ -104,7 +90,7 @@ parse_keycodes() {
 
       print
     }
-  '
+  ' 3< <(xkbcli compile-keymap "${xkbcli_args[@]}" </dev/null)
 }
 
 # Supplement `hyprctl binds` for Lua-only binds that Hyprland currently
