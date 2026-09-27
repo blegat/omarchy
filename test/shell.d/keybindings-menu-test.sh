@@ -147,6 +147,15 @@ grep -q 'SUPER + PARENRIGHT  *→ Expand window left' <<<"$rendered" ||
   fail "a keycode resolves through the configured layout" "$rendered"
 pass "a keycode resolves through the configured layout"
 
+echo '{"str": "us"}' >"$stub_bin/kb_layout"
+echo '{"str": "dvorak"}' >"$stub_bin/kb_variant"
+
+rendered=$(keybindings)
+grep -q 'SUPER + BRACKETLEFT  *→ Expand window left' <<<"$rendered" ||
+  fail "a keycode resolves through the configured variant" "$rendered"
+rm "$stub_bin/kb_variant"
+pass "a keycode resolves through the configured variant"
+
 # Omarchy leads a non-Latin layout with us, and Hyprland binds against that first one.
 stub_hyprctl <<BINDS
 $(keycode_bind 34 "Make webcam overlay smaller")

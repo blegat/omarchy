@@ -538,8 +538,10 @@ output_binding_records_uncached() {
 
 keybindings_cache_key() {
   {
-    printf 'v13\n'
+    printf 'v14\n'
     hyprctl devices 2>/dev/null | grep -F 'active keymap:'
+    hyprctl getoption -j input:kb_layout 2>/dev/null
+    hyprctl getoption -j input:kb_variant 2>/dev/null
     hyprctl binds 2>/dev/null
   } | sha256sum | awk '{ print $1 }'
 }
