@@ -34,7 +34,9 @@ parse_keycodes() {
         if (line ~ /xkb_keycodes/) { section = "codes"; continue }
         if (line ~ /xkb_symbols/)  { section = "syms";  continue }
         if (section == "codes" && match(line, /<([A-Za-z0-9_]+)>\s*=\s*([0-9]+)\s*;/, m)) code_by_name[m[1]] = m[2]
-        if (section == "syms" && match(line, /key\s*<([A-Za-z0-9_]+)>\s*\{\s*\[\s*([^, \]]+)/, m)) sym_by_name[m[1]] = m[2]
+        # With several layouts a key spans lines, and Hyprland binds against its first group
+        if (section == "syms" && match(line, /key\s*<([A-Za-z0-9_]+)>/, m)) key_name = m[1]
+        if (section == "syms" && match(line, /(\{|symbols\[(Group)?1\]\s*=)\s*\[\s*([^, \]]+)/, m)) sym_by_name[key_name] = m[3]
       }
       close("/dev/fd/3")
 
