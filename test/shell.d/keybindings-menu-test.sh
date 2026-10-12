@@ -216,6 +216,13 @@ grep -q 'SUPER + CYRILLIC_HA  *→ Make webcam overlay smaller' <<<"$rendered" |
   fail "a keycode resolves through the second of several layouts once it is active" "$rendered"
 pass "a keycode resolves through the second of several layouts once it is active"
 
+# fcitx5 and wtype take main with a virtual keyboard that stays on the first layout.
+echo '{"keyboards":[{"name":"test","main":false,"layout":"us,ru","variant":",","active_layout_index":1},{"name":"hl-virtual-keyboard-fcitx5","main":true,"layout":"us,ru","variant":",","active_layout_index":0}]}' >"$stub_bin/keyboards"
+rendered=$(keybindings)
+grep -q 'SUPER + CYRILLIC_HA  *→ Make webcam overlay smaller' <<<"$rendered" ||
+  fail "a keycode resolves through the typed keyboard while a virtual one is main" "$rendered"
+pass "a keycode resolves through the typed keyboard while a virtual one is main"
+
 # Typing on another keyboard with the same settings makes it main without
 # changing a label, so the cache it already built is the one read.
 cache_file=$(echo "$tmpdir"/cache/omarchy/keybindings-*.records)

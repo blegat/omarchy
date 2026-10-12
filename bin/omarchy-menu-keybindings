@@ -655,9 +655,12 @@ output_binding_records() {
 
   # Use the same snapshot for the cache key and keycode resolution, even if
   # the layout or main keyboard changes while the menu is being generated.
-  # Hyprland marks no keyboard main until one is typed on; take the first then.
+  # Pick a keyboard someone types on, as the bar's layout widget does: fcitx5 and
+  # wtype take main with a virtual keyboard left on the first layout, and none is
+  # main before any typing. Then the furthest-advanced one is the one switched.
   keyboard=$(hyprctl devices -j | jq -cS '
-    first(.keyboards[]? | select(.main == true)) // first(.keyboards[]?) // {} |
+    [.keyboards[]? | select(.name // "" | test("^(hl-virtual-keyboard|power-button|sleep-button|lid-switch|video-bus)") | not)] as $typed |
+    first($typed[] | select(.main == true)) // ($typed | max_by(.active_layout_index // 0)) // first(.keyboards[]?) // {} |
     {rules, model, layout, variant, options, active_layout_index}
   ')
 
