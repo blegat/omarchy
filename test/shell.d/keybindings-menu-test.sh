@@ -174,7 +174,7 @@ keycode_bind() {
 }
 
 main_keyboard() {
-  printf '{"keyboards":[{"name":"usb","main":false,"layout":"us","active_layout_index":0},{"name":"test","main":true,"layout":"%s","variant":"%s","active_layout_index":%s}]}\n' "$1" "$2" "$3" >"$stub_bin/keyboards"
+  printf '{"keyboards":[{"name":"usb","main":false,"layout":"us","active_layout_index":0},{"name":"%s","main":true,"layout":"%s","variant":"%s","active_layout_index":%s}]}\n' "${4:-test}" "$1" "$2" "$3" >"$stub_bin/keyboards"
 }
 
 stub_hyprctl <<BINDS
@@ -208,8 +208,18 @@ main_keyboard us,ru , 1
 rendered=$(keybindings)
 grep -q 'SUPER + CYRILLIC_HA  *→ Make webcam overlay smaller' <<<"$rendered" ||
   fail "a keycode resolves through the second of several layouts once it is active" "$rendered"
-rm "$stub_bin/keyboards"
 pass "a keycode resolves through the second of several layouts once it is active"
+
+# Typing on another keyboard with the same settings makes it main without
+# changing a label, so the cache it already built is the one read.
+cache_file=$(echo "$tmpdir"/cache/omarchy/keybindings-*.records)
+cache_inode=$(stat -c %i "$cache_file")
+main_keyboard us,ru , 1 laptop
+keybindings >/dev/null
+[[ -f $cache_file && $(stat -c %i "$cache_file") == "$cache_inode" ]] ||
+  fail "another main keyboard with the same settings reads the same cache" "$(ls "$tmpdir"/cache/omarchy)"
+rm "$stub_bin/keyboards"
+pass "another main keyboard with the same settings reads the same cache"
 
 # A chord refused for width opens a row of its own, and the next chord tries
 # that row rather than reaching back past it and printing out of order.

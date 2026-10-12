@@ -657,7 +657,7 @@ output_binding_records() {
   # the layout or main keyboard changes while the menu is being generated.
   keyboard=$(hyprctl devices -j | jq -cS '
     first(.keyboards[]? | select(.main == true)) // {} |
-    {name, rules, model, layout, variant, options, active_layout_index}
+    {rules, model, layout, variant, options, active_layout_index}
   ')
 
   cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy"
