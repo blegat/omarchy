@@ -655,8 +655,9 @@ output_binding_records() {
 
   # Use the same snapshot for the cache key and keycode resolution, even if
   # the layout or main keyboard changes while the menu is being generated.
+  # Hyprland marks no keyboard main until one is typed on; take the first then.
   keyboard=$(hyprctl devices -j | jq -cS '
-    first(.keyboards[]? | select(.main == true)) // {} |
+    first(.keyboards[]? | select(.main == true)) // first(.keyboards[]?) // {} |
     {rules, model, layout, variant, options, active_layout_index}
   ')
 
