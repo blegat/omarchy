@@ -39,7 +39,8 @@ stub_hyprctl() {
     echo 'BINDS'
     echo '  ;;'
     cat <<'DEVICES'
-  devices) echo '{"keyboards":[{"name":"test","main":true,"layout":"us","active_layout_index":0}]}' ;;
+  devices) cat "$(dirname "$0")/keyboards" 2>/dev/null ||
+    echo '{"keyboards":[{"name":"test","main":true,"layout":"us","active_layout_index":0}]}' ;;
 DEVICES
     echo 'esac'
   } >"$stub_bin/hyprctl"
@@ -166,6 +167,49 @@ grep -q 'SUPER + MINUS  *→ Expand window left' <<<"$rendered" &&
   grep -q 'SUPER + ^  *→ Shrink window left' <<<"$rendered" ||
   fail "a keycode is named by what the active layout prints on it" "$rendered"
 pass "a keycode is named by what the active layout prints on it"
+
+# A keycode reads as the symbol the main keyboard's layout puts there, not US QWERTY's.
+keycode_bind() {
+  printf 'bind\n\tmodmask: 64\n\tsubmap: \n\tkey: \n\tkeycode: %s\n\tcatchall: false\n\tdescription: %s\n\tdispatcher: exec\n\targ: true\n' "$1" "$2"
+}
+
+main_keyboard() {
+  printf '{"keyboards":[{"name":"usb","main":false,"layout":"us","active_layout_index":0},{"name":"test","main":true,"layout":"%s","variant":"%s","active_layout_index":%s}]}\n' "$1" "$2" "$3" >"$stub_bin/keyboards"
+}
+
+stub_hyprctl <<BINDS
+$(keycode_bind 20 "Expand window left")
+BINDS
+
+main_keyboard be "" 0
+rendered=$(keybindings)
+grep -q 'SUPER + PARENRIGHT  *→ Expand window left' <<<"$rendered" ||
+  fail "a keycode resolves through the main keyboard's layout" "$rendered"
+pass "a keycode resolves through the main keyboard's layout"
+
+main_keyboard us dvorak 0
+rendered=$(keybindings)
+grep -q 'SUPER + BRACKETLEFT  *→ Expand window left' <<<"$rendered" ||
+  fail "a keycode resolves through the main keyboard's variant" "$rendered"
+pass "a keycode resolves through the main keyboard's variant"
+
+# With several layouts each key spans lines, one per group, and the active group counts.
+stub_hyprctl <<BINDS
+$(keycode_bind 34 "Make webcam overlay smaller")
+BINDS
+
+main_keyboard us,ru , 0
+rendered=$(keybindings)
+grep -q 'SUPER + BRACKETLEFT  *→ Make webcam overlay smaller' <<<"$rendered" ||
+  fail "a keycode resolves through the first of several layouts while it is active" "$rendered"
+pass "a keycode resolves through the first of several layouts while it is active"
+
+main_keyboard us,ru , 1
+rendered=$(keybindings)
+grep -q 'SUPER + CYRILLIC_HA  *→ Make webcam overlay smaller' <<<"$rendered" ||
+  fail "a keycode resolves through the second of several layouts once it is active" "$rendered"
+rm "$stub_bin/keyboards"
+pass "a keycode resolves through the second of several layouts once it is active"
 
 # A chord refused for width opens a row of its own, and the next chord tries
 # that row rather than reaching back past it and printing out of order.
