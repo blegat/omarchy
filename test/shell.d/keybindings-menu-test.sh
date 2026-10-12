@@ -38,8 +38,9 @@ stub_hyprctl() {
     cat
     echo 'BINDS'
     echo '  ;;'
-    echo '  devices) echo "active keymap: English (US)" ;;'
-    echo '  -j) [[ $2 == getoption ]] && cat "'"$stub_bin"'/option-${3#input:}" 2>/dev/null ;;'
+    cat <<'DEVICES'
+  devices) echo '{"keyboards":[{"name":"test","main":true,"layout":"us","active_layout_index":0}]}' ;;
+DEVICES
     echo 'esac'
   } >"$stub_bin/hyprctl"
   chmod +x "$stub_bin/hyprctl"
@@ -151,20 +152,20 @@ grep -q 'SUPER + ~  *→ Toggle scratchpad' <<<"$rendered" ||
   fail "a keycode resolves to the symbol printed on the key too" "$rendered"
 pass "a keycode resolves to the symbol printed on the key too"
 
-# Resize sits on the two keys right of 0, named by the leading layout rather
+# Resize sits on the two keys right of 0, named by the active layout rather
 # than by US: on JIS they print - and ^, and Shift + - is =, not +.
-echo '{"str": "jp"}' >"$stub_bin/option-kb_layout"
+echo '{"keyboards":[{"name":"test","main":true,"layout":"jp","active_layout_index":0}]}' >"$stub_bin/keyboards"
 stub_hyprctl <<BINDS
 $(lua_bind 64 "SUPER + code:20" "Expand window left")
 $(lua_bind 64 "SUPER + code:21" "Shrink window left")
 BINDS
 
 rendered=$(keybindings)
-rm "$stub_bin/option-kb_layout"
+rm "$stub_bin/keyboards"
 grep -q 'SUPER + MINUS  *→ Expand window left' <<<"$rendered" &&
   grep -q 'SUPER + ^  *→ Shrink window left' <<<"$rendered" ||
-  fail "a keycode is named by what the leading layout prints on it" "$rendered"
-pass "a keycode is named by what the leading layout prints on it"
+  fail "a keycode is named by what the active layout prints on it" "$rendered"
+pass "a keycode is named by what the active layout prints on it"
 
 # A chord refused for width opens a row of its own, and the next chord tries
 # that row rather than reaching back past it and printing out of order.
