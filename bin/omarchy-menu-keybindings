@@ -660,7 +660,9 @@ output_binding_records() {
   # main before any typing. Then the furthest-advanced one is the one switched.
   keyboard=$(hyprctl devices -j | jq -cS '
     [.keyboards[]? | select(.name // "" | test("^(hl-virtual-keyboard|power-button|sleep-button|lid-switch|video-bus)") | not)] as $typed |
-    first($typed[] | select(.main == true)) // ($typed | max_by(.active_layout_index // 0)) // first(.keyboards[]?) // {} |
+    first($typed[] | select(.main == true)) //
+      first($typed[] | select((.active_layout_index // 0) == ([$typed[].active_layout_index // 0] | max))) //
+      first(.keyboards[]?) // {} |
     {rules, model, layout, variant, options, active_layout_index}
   ')
 

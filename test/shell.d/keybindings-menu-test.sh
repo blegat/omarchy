@@ -187,7 +187,7 @@ grep -q 'SUPER + PARENRIGHT  *→ Expand window left' <<<"$rendered" ||
   fail "a keycode resolves through the main keyboard's layout" "$rendered"
 pass "a keycode resolves through the main keyboard's layout"
 
-echo '{"keyboards":[{"name":"test","main":false,"layout":"be","active_layout_index":0}]}' >"$stub_bin/keyboards"
+echo '{"keyboards":[{"name":"test","main":false,"layout":"be","active_layout_index":0},{"name":"usb","main":false,"layout":"us","active_layout_index":0}]}' >"$stub_bin/keyboards"
 rendered=$(keybindings)
 grep -q 'SUPER + PARENRIGHT  *→ Expand window left' <<<"$rendered" ||
   fail "a keycode resolves through the first keyboard while none is main" "$rendered"
