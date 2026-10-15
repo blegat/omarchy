@@ -199,6 +199,27 @@ grep -q 'SUPER + BRACKETLEFT  *→ Expand window left' <<<"$rendered" ||
   fail "a keycode resolves through the main keyboard's variant" "$rendered"
 pass "a keycode resolves through the main keyboard's variant"
 
+# Physical keys follow the active device layout; symbolic binds keep their names.
+stub_hyprctl <<BINDS
+$(keycode_bind 20 "Expand window left")
+$(exec_bind 64 "SUPER + minus" "Symbolic minus" "true")
+BINDS
+
+main_keyboard us,de "" 1
+rendered=$(keybindings)
+grep -q 'SUPER + SSHARP  *→ Expand window left' <<<"$rendered" &&
+  grep -q 'SUPER + MINUS  *→ Symbolic minus' <<<"$rendered" ||
+  fail "physical minus follows German while symbolic minus keeps its name" "$rendered"
+pass "physical minus follows German while symbolic minus keeps its name"
+
+# Keep both devices and their rules unchanged, switching only which is main.
+jq '.keyboards[0].main = true | .keyboards[1].main = false' "$stub_bin/keyboards" >"$tmpdir/next-keyboards"
+mv "$tmpdir/next-keyboards" "$stub_bin/keyboards"
+rendered=$(keybindings)
+grep -q 'SUPER + MINUS  *→ Expand window left' <<<"$rendered" ||
+  fail "switching the main keyboard refreshes cached physical key names" "$rendered"
+pass "switching the main keyboard refreshes cached physical key names"
+
 # With several layouts each key spans lines, one per group, and the active group counts.
 stub_hyprctl <<BINDS
 $(keycode_bind 34 "Make webcam overlay smaller")
@@ -349,7 +370,7 @@ translated=$(printf '%s\n' \
   $'SUPER + RETURN                      → Terminal\texec\tomarchy-launch-terminal' \
   $'SUPER + 3                           → Switch to workspace 3\tworkspace\t3' \
   $'SUPER + X                           → My own thing\texec\tmy-thing' |
-  OMARCHY_PATH=$translate_root OMARCHY_LANGUAGE_FILE=$tmpdir/translate-language translate_binding_records)
+  PATH="$ROOT/bin:$PATH" OMARCHY_PATH=$translate_root OMARCHY_LANGUAGE_FILE=$tmpdir/translate-language translate_binding_records)
 expected=$(printf '%s\n' \
   $'SUPER + RETURN                      → Terminal (da)\texec\tomarchy-launch-terminal' \
   $'SUPER + 3                           → Skift til arbejdsområde 3\tworkspace\t3' \
